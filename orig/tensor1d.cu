@@ -16,37 +16,6 @@ gcc -O3 -shared -fPIC -o libtensor1d.so tensor1d.c
 #include "tensor1d.h"
 
 // ----------------------------------------------------------------------------
-// CUDA device detection / configuration
-
-void CUDAInit() {
-  cudaError_t err;
-  CUDAconfig compute;
-  err = cudaGetDeviceCount(&compute.deviceCount); // See if CUDA enabled device exists or not
-  CUDAcheck(err);
-      if (compute.deviceCount = 0) { // If not, run on CPU
-        break;
-      }
-  err = cudaGetDevice(&compute.deviceId); // Locate CUDA deviceId
-  CUDAcheck(err);
-  err = cudaDeviceGetAttribute(&compute.numberOfSMs, cudaDevAttrMultiProcessorCount, compute.deviceId); // Determine the number of streaming multiprocessors for block / thread optimization
-  CUDAcheck(err);
-  //printf("%d", compute.deviceId);
-  printf("Number of Devices: %d\tDevice ID: %d\tNumber of SMs: %d\n", compute.deviceCount, compute.deviceId, compute.numberOfSMs); // Print summary
-  test(compute);
-}
-
-int CUDAcheck(cudaError_t err) {
-    if (err != cudaSuccess) {
-        printf("CUDA error detected: %s\n", cudaGetErrorString(err));
-        return -1;
-        //exit(-1);
-    }
-    printf("Command ran okay !\n");
-    return 0;
-}
-
-
-// ----------------------------------------------------------------------------
 // memory allocation
 
 void *malloc_check(size_t size, const char *file, int line) {

@@ -23,8 +23,8 @@ void CUDAInit() {
   CUDAconfig compute;
   err = cudaGetDeviceCount(&compute.deviceCount); // See if CUDA enabled device exists or not
   CUDAcheck(err);
-      if (compute.deviceCount = 0) { // If not, run on CPU
-        break;
+      if (compute.deviceCount == 0) { // If not, run on CPU
+        return;
       }
   err = cudaGetDevice(&compute.deviceId); // Locate CUDA deviceId
   CUDAcheck(err);
@@ -32,7 +32,7 @@ void CUDAInit() {
   CUDAcheck(err);
   //printf("%d", compute.deviceId);
   printf("Number of Devices: %d\tDevice ID: %d\tNumber of SMs: %d\n", compute.deviceCount, compute.deviceId, compute.numberOfSMs); // Print summary
-  test(compute);
+  //test(compute);
 }
 
 int CUDAcheck(cudaError_t err) {
@@ -57,7 +57,7 @@ void *malloc_check(size_t size, const char *file, int line) {
     }
     return ptr;
 }
-#define mallocCheck(size) malloc_check(size, __FILE__, __LINE__)
+#define mallocCheck(type, size) (type *)malloc_check(size, __FILE__, __LINE__)
 
 // ----------------------------------------------------------------------------
 // utils
@@ -82,8 +82,8 @@ int max(int a, int b) {
 
 Storage* storage_new(int size) {
     assert(size >= 0);
-    Storage* storage = mallocCheck(sizeof(Storage));
-    storage->data = mallocCheck(size * sizeof(float));
+    Storage* storage = mallocCheck(Storage, sizeof(Storage));
+    storage->data = mallocCheck(float, size * sizeof(float));
     storage->data_size = size;
     storage->ref_count = 1;
     return storage;
@@ -116,7 +116,7 @@ void storage_decref(Storage* s) {
 
 // torch.empty(size)
 Tensor* tensor_empty(int size) {
-    Tensor* t = mallocCheck(sizeof(Tensor));
+    Tensor* t = mallocCheck(Tensor, sizeof(Tensor));
     t->storage = storage_new(size);
     // at init we cover the whole storage, i.e. range(start=0, stop=size, step=1)
     t->offset = 0;
@@ -213,7 +213,7 @@ Tensor* tensor_slice(Tensor* t, int start, int end, int step) {
         return tensor_empty(0);
     }
     // create the new Tensor: same Storage but new View
-    Tensor* s = mallocCheck(sizeof(Tensor));
+    Tensor* s = mallocCheck(Tensor, sizeof(Tensor));
     s->storage = t->storage; // inherit the underlying storage!
     s->size = ceil_div(end - start, step);
     s->offset = t->offset + start * t->stride;
@@ -265,7 +265,7 @@ char* tensor_to_string(Tensor* t) {
     if (t->repr != NULL) { return t->repr; }
     // otherwise create a new string representation
     int max_size = t->size * 20 + 3; // 20 chars/number, brackets and commas
-    t->repr = mallocCheck(max_size);
+    t->repr = mallocCheck(char, max_size);
     char* current = t->repr;
     current += sprintf(current, "[");
     for (int i = 0; i < t->size; i++) {
