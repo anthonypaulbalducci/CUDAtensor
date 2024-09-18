@@ -24,6 +24,7 @@ void CUDAInit() {
   err = cudaGetDeviceCount(&compute.deviceCount); // See if CUDA enabled device exists or not
   CUDAcheck(err);
       if (compute.deviceCount == 0) { // If not, run on CPU
+        printf("Device not found - CUDA disabled\n");
         return;
       }
   err = cudaGetDevice(&compute.deviceId); // Locate CUDA deviceId
@@ -31,8 +32,10 @@ void CUDAInit() {
   err = cudaDeviceGetAttribute(&compute.numberOfSMs, cudaDevAttrMultiProcessorCount, compute.deviceId); // Determine the number of streaming multiprocessors for block / thread optimization
   CUDAcheck(err);
   //printf("%d", compute.deviceId);
+  printf("Device found - CUDA enabled\n");
   printf("Number of Devices: %d\tDevice ID: %d\tNumber of SMs: %d\n", compute.deviceCount, compute.deviceId, compute.numberOfSMs); // Print summary
   //test(compute);
+  return;
 }
 
 int CUDAcheck(cudaError_t err) {
@@ -67,6 +70,7 @@ int ceil_div(int a, int b) {
     return (a + b - 1) / b;
 }
 
+/* See if CUDA functions work in place of
 int min(int a, int b) {
     return (a < b) ? a : b;
 }
@@ -74,6 +78,7 @@ int min(int a, int b) {
 int max(int a, int b) {
     return (a > b) ? a : b;
 }
+*/
 
 // ----------------------------------------------------------------------------
 // Storage: simple array of floats, defensive on index access, reference-counted
@@ -296,6 +301,8 @@ void tensor_free(Tensor* t) {
 
 int main(int argc, char *argv[]) {
     // create a tensor with 20 elements
+    CUDAInit();
+
     Tensor* t = tensor_arange(20);
     tensor_print(t);
     // slice the tensor as t[5:15:1]
