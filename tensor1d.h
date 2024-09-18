@@ -23,6 +23,14 @@ typedef struct {
     char* repr; // holds the text representation of the tensor
 } Tensor;
 
+typedef struct {
+    int deviceCount;
+    int deviceId;
+    int numberOfSMs;
+    int numberOfBlocks;
+    int numberOfThreads;
+} CUDAconfig;
+
 Tensor* tensor_empty(int size);
 int logical_to_physical(Tensor *t, int ix);
 float tensor_getitem(Tensor* t, int ix);
@@ -38,5 +46,6 @@ Tensor* tensor_add(Tensor* t1, Tensor* t2);
 void tensor_incref(Tensor* t);
 void tensor_decref(Tensor* t);
 void tensor_free(Tensor* t);
+int CUDAcheck(cudaError_t err);
 
 #endif // TENSOR1D_H

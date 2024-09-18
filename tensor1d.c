@@ -16,6 +16,20 @@ gcc -O3 -shared -fPIC -o libtensor1d.so tensor1d.c
 #include "tensor1d.h"
 
 // ----------------------------------------------------------------------------
+// CUDA device detection / configuration
+
+int CUDAcheck(cudaError_t err) {
+    if (err != cudaSuccess) {
+        printf("CUDA error detected: %s\n", cudaGetErrorString(err));
+        return -1;
+        //exit(-1);
+    }
+    printf("Command ran okay !\n");
+    return 0;
+}
+
+
+// ----------------------------------------------------------------------------
 // memory allocation
 
 void *malloc_check(size_t size, const char *file, int line) {
