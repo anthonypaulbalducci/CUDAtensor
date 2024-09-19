@@ -14,6 +14,7 @@ gcc -O3 -shared -fPIC -o libtensor1d.so tensor1d.c
 #include <math.h>
 #include <assert.h>
 #include "tensor1d.h"
+#include <time.h> // Benchmarking
 
 // ----------------------------------------------------------------------------
 // CUDA device detection / configuration
@@ -301,11 +302,24 @@ void tensor_free(Tensor* t) {
 
 int main(int argc, char *argv[]) {
     // create a tensor with 20 elements
+    clock_t start, end;
+    double time_elapsed;
+
     CUDAInit();
 
-    Tensor* t = tensor_arange(20);
-    tensor_print(t);
+    Tensor* t = tensor_arange(900000000);
+    Tensor* t1 = tensor_arange(900000000);
+    Tensor* t3;
+
+    start = clock();
+    t3 = tensor_add(t, t1);
+    end = clock();
+    time_elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("Time Elapsed: %f\n", time_elapsed);
+
+    //tensor_print(t);
     // slice the tensor as t[5:15:1]
+    /*
     Tensor* s = tensor_slice(t, 5, 15, 1);
     tensor_print(s);
     // slice that tensor as s[2:7:2]
@@ -317,7 +331,10 @@ int main(int argc, char *argv[]) {
 
     tensor_free(ss);
     tensor_free(s);
+    */
     tensor_free(t);
+    tensor_free(t1);
+    tensor_free(t3);
 
     return 0;
 }
