@@ -25,7 +25,7 @@ void CUDAInit() {
   err = cudaGetDeviceCount(&compute.deviceCount); // See if CUDA enabled device exists or not
   CUDAcheck(err);
       if (compute.deviceCount == 0) { // If not, run on CPU
-        printf("Device not found - CUDA disabled\n");
+        printf("Device not found - CUDA Mode disabled\n");
         return;
       }
   err = cudaGetDevice(&compute.deviceId); // Locate CUDA deviceId
@@ -33,7 +33,7 @@ void CUDAInit() {
   err = cudaDeviceGetAttribute(&compute.numberOfSMs, cudaDevAttrMultiProcessorCount, compute.deviceId); // Determine the number of streaming multiprocessors for block / thread optimization
   CUDAcheck(err);
   //printf("%d", compute.deviceId);
-  printf("Device found - CUDA enabled\n");
+  printf("Device found - CUDA Mode enabled\n");
   printf("Number of Devices: %d\tDevice ID: %d\tNumber of SMs: %d\n", compute.deviceCount, compute.deviceId, compute.numberOfSMs); // Print summary
   //test(compute);
   return;
@@ -266,6 +266,19 @@ Tensor* tensor_add(Tensor* t1, Tensor* t2) {
     return result;
 }
 
+/*__global__
+void tensor_add_CUDA(Tensor* result, Tensor* t1, Tensor* t2, int Tensor_length)
+{
+  if (!broadcastable(t1, t2)) { return NULL; }
+  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int stride = blockDim.x * gridDim.x;
+
+  for(int i = index; i < Tensor_length; i += stride)
+  {
+    result[i] = a[i] + b[i];
+  }
+}*/
+
 char* tensor_to_string(Tensor* t) {
     // if we already have a string representation, return it
     if (t->repr != NULL) { return t->repr; }
@@ -287,9 +300,9 @@ char* tensor_to_string(Tensor* t) {
     return t->repr;
 }
 
-void tensor_print(Tensor* t) {
+void tensor_print(const char pretext[], Tensor* t) {
     char* str = tensor_to_string(t);
-    printf("%s\n", str);
+    printf("%s %s\n", pretext, str);
 }
 
 void tensor_free(Tensor* t) {
@@ -307,19 +320,37 @@ int main(int argc, char *argv[]) {
 
     CUDAInit();
 
-    Tensor* t = tensor_arange(900000000);
-    Tensor* t1 = tensor_arange(900000000);
+    Tensor* t = tensor_arange(10);
+    Tensor* t1 = tensor_arange(10);
+    printf("Size: %d\n", t1->size);
     Tensor* t3;
 
+    //printf("Tensor 1: %f", tensor_print(t));
+    //printf("Tensor 2: %f", tensor_print(t1));
+    tensor_print("Tensor 1:", t);
+    tensor_print("Tensor 2:", t1);
+    //tensor_print(t1);
+    
     start = clock();
     t3 = tensor_add(t, t1);
     end = clock();
     time_elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("Time Elapsed: %f\n", time_elapsed);
+    printf("CPU Time Elapsed: %f\n\n", time_elapsed);
+    
+    tensor_print("Result of Tensor 1 + Tensor 2:", t3);
+    //printf("Result of Tensor 1 + Tensor 2: %f", tensor_print(t3));
+   // tensor_print(t3);
+
+    /*start = clock();
+    t3 = tensor_add_CUDA(t, t1);
+    end = clock();
+    time_elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("GPU Time Elapsed: %f\n", time_elapsed);
+
 
     //tensor_print(t);
     // slice the tensor as t[5:15:1]
-    /*
+    
     Tensor* s = tensor_slice(t, 5, 15, 1);
     tensor_print(s);
     // slice that tensor as s[2:7:2]
