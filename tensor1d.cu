@@ -45,7 +45,7 @@ int CUDAcheck(cudaError_t err) {
         return -1;
         //exit(-1);
     }
-    printf("Command ran okay !\n");
+    printf("CUDA command ran okay !\n");
     return 0;
 }
 
