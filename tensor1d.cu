@@ -266,10 +266,10 @@ Tensor* tensor_add(Tensor* t1, Tensor* t2) {
     return result;
 }
 
-/*__global__
-void tensor_add_CUDA(Tensor* result, Tensor* t1, Tensor* t2, int Tensor_length)
+__global__
+void tensor_add_CUDA(float* result, float* a, float* b, int Tensor_length)
 {
-  if (!broadcastable(t1, t2)) { return NULL; }
+  //if (!broadcastable(t1, t2)) { return NULL; }
   int index = threadIdx.x + blockIdx.x * blockDim.x;
   int stride = blockDim.x * gridDim.x;
 
@@ -277,7 +277,7 @@ void tensor_add_CUDA(Tensor* result, Tensor* t1, Tensor* t2, int Tensor_length)
   {
     result[i] = a[i] + b[i];
   }
-}*/
+}
 
 char* tensor_to_string(Tensor* t) {
     // if we already have a string representation, return it
@@ -311,6 +311,52 @@ void tensor_free(Tensor* t) {
     free(t);
 }
 
+float* tensor_to_array(Tensor* t) {
+    float* array = mallocCheck(float, t->size * sizeof(float));
+    
+    if (t->stride == 1) {
+        // Data is contiguous, we can use a single memcpy
+        memcpy(array, t->storage->data + t->offset, t->size * sizeof(float));
+    } else {
+        // Data is not contiguous, we need to copy elements one by one
+        for (int i = 0; i < t->size; i++) {
+            array[i] = t->storage->data[t->offset + i * t->stride];
+        }
+    }
+    
+    return array;
+}
+
+Tensor* tensor_from_array(float* array, int size) {
+    Tensor* t = tensor_empty(size);
+    
+    // Since we're creating a new tensor, it will always be contiguous,
+    // so we can always use memcpy
+    memcpy(t->storage->data, array, size * sizeof(float));
+    
+    return t;
+}
+
+bool tensor_compare(Tensor* t1, Tensor* t2) {
+    if (t1->size != t2->size) {
+        printf("Tensors have different sizes. Cannot compare.\n");
+        return false;
+    }
+
+    for (int i = 0; i < t1->size; i++) {
+        float val1 = tensor_getitem(t1, i);
+        float val2 = tensor_getitem(t2, i);
+        if (fabsf(val1 - val2) > 1e-6) {  // Using a small epsilon for float comparison
+            printf("Tensors are different. First mismatch at index %d: %.6f != %.6f\n", i, val1, val2);
+            return false;
+        }
+    }
+
+    printf("Tensors are identical.\n");
+    return true;
+}
+
+
 // ----------------------------------------------------------------------------
 
 int main(int argc, char *argv[]) {
@@ -320,15 +366,16 @@ int main(int argc, char *argv[]) {
 
     CUDAInit();
 
-    Tensor* t = tensor_arange(10);
-    Tensor* t1 = tensor_arange(10);
-    printf("Size: %d\n", t1->size);
+    Tensor* t = tensor_arange(999999999);
+    Tensor* t1 = tensor_arange(999999999);
+    printf("Tensor of size: %d\n", t1->size);
+    
     Tensor* t3;
 
     //printf("Tensor 1: %f", tensor_print(t));
     //printf("Tensor 2: %f", tensor_print(t1));
-    tensor_print("Tensor 1:", t);
-    tensor_print("Tensor 2:", t1);
+    //tensor_print("Tensor 1:", t);
+    //tensor_print("Tensor 2:", t1);
     //tensor_print(t1);
     
     start = clock();
@@ -337,7 +384,68 @@ int main(int argc, char *argv[]) {
     time_elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
     printf("CPU Time Elapsed: %f\n\n", time_elapsed);
     
-    tensor_print("Result of Tensor 1 + Tensor 2:", t3);
+    //tensor_print("Result of Tensor 1 + Tensor 2:", t3);
+
+    float* a = tensor_to_array(t);
+    float* b = tensor_to_array(t1);
+    // Allocate device memory for a, b, and result
+    float *d_a, *d_b, *d_result;
+    cudaMalloc((void**)&d_a, t->size * sizeof(float));
+    cudaMalloc((void**)&d_b, t1->size * sizeof(float));
+    cudaMalloc((void**)&d_result, t->size * sizeof(float));
+
+    // Copy a and b from host to device
+    cudaMemcpy(d_a, a, t->size * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_b, b, t1->size * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Allocate host memory for result
+    float*result = (float*)malloc(t->size * sizeof(float));
+
+    // Note: d_result will be used in the CUDA kernel, and result will be used to store the final output on the host
+    
+    
+
+    //tensor_add_CUDA<<<1, 1>>>(result, a, b, int(t1->size));
+    
+    start = clock();
+    tensor_add_CUDA<<<100, 32>>>(d_result, d_a, d_b, 999999999);
+    cudaDeviceSynchronize();
+    
+
+    // Copy the result from device to host
+    cudaMemcpy(result, d_result, t->size * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Convert the result array to a tensor
+    Tensor* t_result = tensor_from_array(result, t->size);
+
+    // Print the result tensor
+    //tensor_print("Result of CUDA tensor addition:", t_result);
+    end = clock();
+    time_elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("GPU Time Elapsed: %f\n\n", time_elapsed);
+    tensor_compare(t1, t_result);
+    // Free the device memory
+    cudaFree(d_a);
+    cudaFree(d_b);
+    cudaFree(d_result);
+
+    // Free the host memory
+    free(a);
+    free(b);
+    free(result);
+
+    // Free the result tensor
+    tensor_free(t_result);
+
+    /*float* array = tensor_to_array(t3);
+    for (int i = 0; i < t3->size; i++) {
+        printf("array[%d] = %.1f\n", i, array[i]);
+    }
+    free(array);    
+
+    Tensor* t4 = tensor_from_array(d_result, t3->size);
+    tensor_print("Result of array to tensor:", t4);
+
     //printf("Result of Tensor 1 + Tensor 2: %f", tensor_print(t3));
    // tensor_print(t3);
 
