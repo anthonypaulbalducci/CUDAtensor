@@ -266,6 +266,50 @@ Tensor* tensor_add(Tensor* t1, Tensor* t2) {
     return result;
 }
 
+Tensor* tensor_mul(Tensor* t1, Tensor* t2) {
+    if (!broadcastable(t1, t2)) { return NULL; }
+    int result_size = max(t1->size, t2->size);
+    Tensor* result = tensor_empty(result_size);
+    int t1_index = 0;
+    int t2_index = 0;
+    int t1_stride = t1->size > 1 ? 1 : 0; // either we walk this tensor or not
+    int t2_stride = t2->size > 1 ? 1 : 0; // either we walk this tensor or not
+    // walk the output tensor and add the values
+    for (int result_index = 0; result_index < result_size; result_index++) {
+        float val1 = tensor_getitem(t1, t1_index);
+        float val2 = tensor_getitem(t2, t2_index);
+        float val = val1 * val2;
+        tensor_setitem(result, result_index, val);
+        t1_index += t1_stride;
+        t2_index += t2_stride;
+    }
+    return result;
+}
+
+Tensor* tensor_dot(Tensor* t1, Tensor* t2) {
+    if (!broadcastable(t1, t2)) { return NULL; }
+    int result_size = max(t1->size, t2->size);
+    Tensor* result = tensor_empty(1);
+    int t1_index = 0;
+    int t2_index = 0;
+    int t1_stride = t1->size > 1 ? 1 : 0; // either we walk this tensor or not
+    int t2_stride = t2->size > 1 ? 1 : 0; // either we walk this tensor or not
+    float running_product = 0;
+    // walk the output tensor and add the values
+    for (int result_index = 0; result_index < result_size; result_index++) {
+        float val1 = tensor_getitem(t1, t1_index);
+        float val2 = tensor_getitem(t2, t2_index);
+        float val = val1 * val2;
+        running_product += val;
+        //tensor_setitem(result, result_index, val);
+        t1_index += t1_stride;
+        t2_index += t2_stride;
+    }
+    tensor_setitem(result, 0, running_product);
+    return result;
+}
+
+
 __global__
 void tensor_add_CUDA(float* result, float* a, float* b, int Tensor_length)
 {
@@ -276,6 +320,19 @@ void tensor_add_CUDA(float* result, float* a, float* b, int Tensor_length)
   for(int i = index; i < Tensor_length; i += stride)
   {
     result[i] = a[i] + b[i];
+  }
+}
+
+__global__
+void tensor_mul_CUDA(float* result, float* a, float* b, int Tensor_length)
+{
+  //if (!broadcastable(t1, t2)) { return NULL; }
+  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int stride = blockDim.x * gridDim.x;
+
+  for(int i = index; i < Tensor_length; i += stride)
+  {
+    result[i] = a[i] * b[i];
   }
 }
 
@@ -366,16 +423,18 @@ int main(int argc, char *argv[]) {
 
     CUDAInit();
 
-    Tensor* t = tensor_arange(999999999);
-    Tensor* t1 = tensor_arange(999999999);
+    Tensor* t = tensor_arange(10);
+    Tensor* t1 = tensor_arange(10);
     printf("Tensor of size: %d\n", t1->size);
     
     Tensor* t3;
+    Tensor* t4;
+    Tensor* t5;
 
     //printf("Tensor 1: %f", tensor_print(t));
     //printf("Tensor 2: %f", tensor_print(t1));
-    //tensor_print("Tensor 1:", t);
-    //tensor_print("Tensor 2:", t1);
+    tensor_print("Tensor 1:", t);
+    tensor_print("Tensor 2:", t1);
     //tensor_print(t1);
     
     start = clock();
@@ -384,7 +443,15 @@ int main(int argc, char *argv[]) {
     time_elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
     printf("CPU Time Elapsed: %f\n\n", time_elapsed);
     
-    //tensor_print("Result of Tensor 1 + Tensor 2:", t3);
+    tensor_print("Result of Tensor 1 + Tensor 2:", t3);
+
+    t4 = tensor_mul(t, t1);
+    tensor_print("Result of Tensor 1 * Tensor 2:", t4);
+
+    t5 = tensor_dot(t, t1);
+    tensor_print("Result of Tensor 1 dot Tensor 2:", t5);
+
+/*
 
     float* a = tensor_to_array(t);
     float* b = tensor_to_array(t1);
@@ -454,23 +521,23 @@ int main(int argc, char *argv[]) {
     end = clock();
     time_elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
     printf("GPU Time Elapsed: %f\n", time_elapsed);
-
+*/
 
     //tensor_print(t);
     // slice the tensor as t[5:15:1]
     
     Tensor* s = tensor_slice(t, 5, 15, 1);
-    tensor_print(s);
+    tensor_print("",s);
     // slice that tensor as s[2:7:2]
     Tensor* ss = tensor_slice(s, 2, 7, 2);
-    tensor_print(ss);
+    tensor_print("",ss);
     // print element -1
     float val = tensor_getitem(ss, -1);
     printf("ss[-1] = %.1f\n", val);
 
     tensor_free(ss);
     tensor_free(s);
-    */
+
     tensor_free(t);
     tensor_free(t1);
     tensor_free(t3);
