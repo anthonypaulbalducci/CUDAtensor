@@ -336,6 +336,8 @@ void tensor_mul_CUDA(float* result, float* a, float* b, int Tensor_length)
   }
 }
 
+
+
 char* tensor_to_string(Tensor* t) {
     // if we already have a string representation, return it
     if (t->repr != NULL) { return t->repr; }
@@ -357,7 +359,12 @@ char* tensor_to_string(Tensor* t) {
     return t->repr;
 }
 
-void tensor_print(const char pretext[], Tensor* t) {
+void tensor_print(Tensor* t) {
+    char* str = tensor_to_string(t);
+    printf("%s\n", str);
+}
+
+void tensor_printpt(const char pretext[], Tensor* t) { // Prints a string and a tensor
     char* str = tensor_to_string(t);
     printf("%s %s\n", pretext, str);
 }
@@ -433,23 +440,24 @@ int main(int argc, char *argv[]) {
 
     //printf("Tensor 1: %f", tensor_print(t));
     //printf("Tensor 2: %f", tensor_print(t1));
-    tensor_print("Tensor 1:", t);
-    tensor_print("Tensor 2:", t1);
+    tensor_printpt("Tensor 1:", t);
+    tensor_printpt("Tensor 2:", t1);
     //tensor_print(t1);
     
     start = clock();
     t3 = tensor_add(t, t1);
     end = clock();
     time_elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("CPU Time Elapsed: %f\n\n", time_elapsed);
+    printf("CPU Time Elapsed: %f seconds\n\n", time_elapsed);
     
-    tensor_print("Result of Tensor 1 + Tensor 2:", t3);
+    tensor_printpt("Result of Tensor 1 + Tensor 2:", t3);
 
     t4 = tensor_mul(t, t1);
-    tensor_print("Result of Tensor 1 * Tensor 2:", t4);
+    tensor_printpt("Result of Tensor 1 * Tensor 2:", t4);
 
     t5 = tensor_dot(t, t1);
-    tensor_print("Result of Tensor 1 dot Tensor 2:", t5);
+    tensor_printpt("Result of Tensor 1 dot Tensor 2:", t5);
+    tensor_print(t5);
 
 /*
 
@@ -489,7 +497,7 @@ int main(int argc, char *argv[]) {
     //tensor_print("Result of CUDA tensor addition:", t_result);
     end = clock();
     time_elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("GPU Time Elapsed: %f\n\n", time_elapsed);
+    printf("GPU Time Elapsed: %f seconds\n\n", time_elapsed);
     tensor_compare(t1, t_result);
     // Free the device memory
     cudaFree(d_a);
@@ -527,10 +535,10 @@ int main(int argc, char *argv[]) {
     // slice the tensor as t[5:15:1]
     
     Tensor* s = tensor_slice(t, 5, 15, 1);
-    tensor_print("",s);
+    tensor_printpt("Slice of Tensor 1:", s);
     // slice that tensor as s[2:7:2]
     Tensor* ss = tensor_slice(s, 2, 7, 2);
-    tensor_print("",ss);
+    tensor_printpt("",ss);
     // print element -1
     float val = tensor_getitem(ss, -1);
     printf("ss[-1] = %.1f\n", val);
