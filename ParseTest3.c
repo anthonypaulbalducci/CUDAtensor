@@ -9,6 +9,23 @@ void tensor(const char* input) {
     int max_inner_count = 0;
     int number_count = 0;
 
+    // Check if it's a 3D or higher tensor
+    if (strncmp(input, "[[[", 3) == 0) {
+        printf("Only 1D and 2D Tensors are supported\n");
+        return;
+    }
+
+    // Check if brackets are balanced
+    int open_brackets = 0, close_brackets = 0;
+    for (int i = 0; input[i] != '\0'; i++) {
+        if (input[i] == '[') open_brackets++;
+        if (input[i] == ']') close_brackets++;
+    }
+    if (open_brackets != close_brackets) {
+        printf("Invalid Tensor\n");
+        return;
+    }
+
     // Check if it's a nested statement
     if (strstr(input, "[[") != NULL) {
         is_nested = 1;
@@ -105,5 +122,9 @@ int main() {
     tensor("[[1, 2, 3], [4, 5, 6], [7, 8, 9]]");
     printf("e = tensor(\"[[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]]\")\n");
     tensor("[[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]]");
+    printf("f = tensor(\"[[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]]\") \n");
+    tensor("[[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]]");
+    printf("g = tensor(\"[[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]\") \n");
+    tensor("[[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]");
 return 0;
 }
